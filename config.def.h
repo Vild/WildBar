@@ -11,11 +11,11 @@
 /* Default bar position, overwritten by '-b' switch */
 #define BAR_BOTTOM 0
 /* The fonts used for the bar, comma separated. Only the first 2 will be used. */
-#define BAR_FONT       "-*-terminus-medium-r-normal-*-12-*-*-*-c-*-*-1","fixed"
+#define BAR_FONT "-misc-stlarch-medium-r-normal--10-100-75-75-c-80-iso10646-1", "-lucy-tewi-medium-r-normal--11-90-75-75-p-58-iso10646-1"
 /* Some fonts don't set the right width for some chars, pheex it */
 #define BAR_FONT_FALLBACK_WIDTH 6
 /* Define the opacity of the bar (requires a compositor such as compton) */
-#define BAR_OPACITY 1.0 /* 0 is invisible, 1 is opaque */
+#define BAR_OPACITY 0.95 /* 0 is invisible, 1 is opaque */
 /* Color palette */
 #define BACKGROUND 0x232c31
 #define COLOR0 0x2d3c46
@@ -29,3 +29,31 @@
 #define COLOR8 0x425059
 #define COLOR9 0xcc6666
 #define FOREGROUND 0xc5c8c6
+
+/* Clickable areas */
+#define NUM_AREAS 22
+#define AREAA "~/.config/bspwm/panel/scripts/spawn_dmenu"
+#define AREAB "bspc desktop -f ^1"
+#define AREAC "bspc desktop -f ^2"
+#define AREAD "bspc desktop -f ^3"
+#define AREAE "bspc desktop -f ^4"
+#define AREAF "bspc desktop -f ^5"
+#define AREAG "bspc desktop -f ^6"
+#define AREAH "bspc desktop -f ^7"
+#define AREAI "bspc desktop -f ^8"
+#define AREAJ "bspc desktop -f ^9"
+#define AREAK "bspc desktop -f ^10"
+#define AREAL "bspc desktop -l next"
+#define AREAM "~/.config/bspwm/panel/scripts/toggle_conky net"
+#define AREAN "~/.config/bspwm/panel/scripts/toggle_conky disk"
+#define AREAO "~/.config/bspwm/panel/scripts/toggle_conky mem"
+#define AREAP "~/.config/bspwm/panel/scripts/toggle_conky cpu"
+#define AREAQ "~/.config/bspwm/panel/scripts/toggle_conky temp"
+#define AREAR "~/.config/bspwm/panel/scripts/toggle_conky mpd"
+#define AREAS "~/.config/bspwm/panel/scripts/toggle_conky cal"
+#define AREAT "echo area T"
+#define AREAU "echo area U"
+#define AREAV "echo area V"
+
+/* Mouse button to react to */
+#define MOUSE_BUTTON 1

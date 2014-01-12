@@ -45,6 +45,17 @@ typedef struct screen_t {
     xcb_window_t window;
 } screen_t;
 
+typedef struct area_t {
+    struct area_t *next;
+    struct area_t *prev;
+    int begin;
+    int end;
+    int begin_x;
+    int end_x;
+    int align;
+    const char *cmd;
+} area_t;
+
 static xcb_connection_t *c;
 static xcb_drawable_t   canvas;
 static xcb_gcontext_t   draw_gc;
@@ -59,11 +70,15 @@ static fontset_item_t   *sel_font = NULL;
 static screen_t         *screens;
 static int              num_screens;
 static const unsigned   palette[] = {COLOR0,COLOR1,COLOR2,COLOR3,COLOR4,COLOR5,COLOR6,COLOR7,COLOR8,COLOR9,BACKGROUND,FOREGROUND};
+static const char       *area_cmd[] = {AREAA,AREAB,AREAC,AREAD,AREAE,AREAF,AREAG,AREAH,AREAI,AREAJ,AREAK,
+                                    AREAL,AREAM,AREAN,AREAO,AREAP,AREAQ,AREAR,AREAS,AREAT,AREAU,AREAV};
+static area_t           *area_list_head;
+static area_t           *area_list_tail;
 
 #if XINERAMA
-static const char *control_characters = "fbulcsr";
+static const char *control_characters = "afbulcsr";
 #else
-static const char *control_characters = "fbulcr";
+static const char *control_characters = "afbulcr";
 #endif
 
 static inline void
@@ -97,6 +112,19 @@ xcb_set_fontset (int i)
     if (sel_font != &fontset[i]) {
         sel_font = &fontset[i];
         xcb_change_gc (c, draw_gc , XCB_GC_FONT, (const uint32_t []){ sel_font->xcb_ft });
+    }
+}
+
+static inline void
+xcb_handle_event (int16_t x)
+{
+    area_t *area = area_list_head;
+    while (area) {
+        if(area->begin <=x && area->end >= x) {
+            system (area->cmd);
+            return;
+        }
+        area = area->next;
     }
 }
 
@@ -143,6 +171,72 @@ draw_char (screen_t *screen, int x, int align, wchar_t ch)
     return ch_width;
 }
 
+static void
+area_begin (screen_t *screen, int x, int align, int num)
+{
+    area_t *area = calloc (1, sizeof (*area));
+
+    area->align = align;
+    area->begin_x = x;
+    area->cmd = area_cmd[num];
+
+    switch (align) {
+            case ALIGN_L:
+                    area->begin = x;
+                    break;
+            case ALIGN_C:
+                    area->begin = screen->width / 2 - x / 2;
+                    break;
+            case ALIGN_R:
+                    area->begin = screen->width;
+                    break;
+    }
+
+    if (!area_list_head) {
+            area_list_head = area;
+            area_list_tail = area;
+    }
+    else {
+            area_list_tail->next = area;
+            area->prev = area_list_tail;
+            area_list_tail = area;
+    }
+}
+
+static void
+area_end (screen_t *screen, int x, int align, int num)
+{
+    area_t *area = area_list_tail;
+    area->end_x = x;
+
+    switch (align) {
+            case ALIGN_L:
+                    area->end = x;
+                    break;
+            case ALIGN_C:
+                    area->end = screen->width / 2 + x / 2;
+                    break;
+            case ALIGN_R:
+                    area->begin -= (x - area->begin_x);
+                    area->end = screen->width;
+                    /*
+                     * if there were any other right aligned areas
+                     * before this one, push them left
+                     */
+                    area_t *a = area->prev;
+                    if (a && a->align == ALIGN_R) {
+                        int diff = area->begin_x - a->end_x + area->end - area->begin;
+
+                        while (a && a->align == ALIGN_R) {
+                                a->begin -= diff;
+                                a->end -= diff;
+                                a = a->prev;
+                        }
+                    }
+                    break;
+    }
+}
+
 void
 parse (char *text)
 {
@@ -150,6 +244,7 @@ parse (char *text)
 
     int pos_x = 0;
     int align = 0;
+    int area = 0;
     screen_t *screen = &screens[0];
 
     xcb_fill_rect (clear_gc, 0, 0, bar_width, BAR_HEIGHT);
@@ -214,6 +309,11 @@ parse (char *text)
                     case 'r': 
                         align = ALIGN_R; 
                         pos_x = 0; 
+                        break;
+                    case 'a':
+                        islower(*p) ? area_begin(screen, pos_x, align, (area = (*p)-'a'))
+                                    : area_end(screen, pos_x, align, area);
+                        p++;
                         break;
                 }
         } else { /* utf-8 -> ucs-2 */
@@ -356,7 +456,7 @@ set_ewmh_atoms ()
 xcb_window_t
 create_window(xcb_window_t root, int x, int y, int width, int height, xcb_visualid_t visual) {
     xcb_window_t window = xcb_generate_id(c);
-    xcb_create_window(c, XCB_COPY_FROM_PARENT, window, root, x, y, width, height, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, visual, XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK, (const uint32_t []){ palette[10], XCB_EVENT_MASK_EXPOSURE });
+    xcb_create_window(c, XCB_COPY_FROM_PARENT, window, root, x, y, width, height, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, visual, XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK, (const uint32_t []){ palette[10], XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_BUTTON_RELEASE });
 
     xcb_change_window_attributes (c, window, XCB_CW_OVERRIDE_REDIRECT, (const uint32_t []){ force_docking });
 
@@ -485,6 +585,16 @@ init (void)
     xcb_flush (c);
 }
 
+static void
+clear_area_list (void)
+{
+        while (area_list_head) {
+                area_t *a = area_list_head;
+                area_list_head = area_list_head->next;
+                free(a);
+        }
+}
+
 void
 cleanup (void)
 {
@@ -509,6 +619,8 @@ cleanup (void)
         xcb_free_gc (c, underl_gc);
     if (c)
         xcb_disconnect (c);
+
+    clear_area_list();
 }
 
 void
@@ -529,6 +641,7 @@ main (int argc, char **argv)
 
     xcb_generic_event_t *ev;
     xcb_expose_event_t *expose_ev;
+    xcb_button_release_event_t *button_ev;
 
     int permanent = 0;
 
@@ -568,17 +681,22 @@ main (int argc, char **argv)
             }
             if (pollin[0].revents & POLLIN) { /* New input, process it */
                 fgets (input, sizeof(input), stdin);
+                clear_area_list();
                 parse (input);
                 redraw = 1;
             }
             if (pollin[1].revents & POLLIN) { /* Xserver broadcasted an event */
                 while ((ev = xcb_poll_for_event (c))) {
-                    expose_ev = (xcb_expose_event_t *)ev;
 
-                    switch (ev->response_type & 0x7F) {
-                        case XCB_EXPOSE: 
+                    switch (ev->response_type & ~0x80) {
+                        case XCB_EXPOSE:
+                            expose_ev = (xcb_expose_event_t *)ev;
                             if (expose_ev->count == 0) redraw = 1; 
                         break;
+                        case XCB_BUTTON_RELEASE:
+                            button_ev = (xcb_button_release_event_t *)ev;
+                            if (button_ev->detail == MOUSE_BUTTON)
+                                xcb_handle_event (button_ev->event_x);
                     }
 
                     free (ev);
