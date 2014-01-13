@@ -182,7 +182,7 @@ area_begin (screen_t *screen, int x, int align)
                     area->begin = x;
                     break;
             case ALIGN_C:
-                    area->begin = screen->width / 2 - x / 2;
+                    area->begin = screen->width / 2 + x / 2;
                     break;
             case ALIGN_R:
                     area->begin = screen->width;
@@ -211,8 +211,24 @@ area_end (screen_t *screen, int x, int align)
                     area->end = x;
                     break;
             case ALIGN_C:
+                    area->begin -= (x - area->begin_x) / 2;
                     area->end = screen->width / 2 + x / 2;
-                    break;
+                     /*
+                     * if there were any other center aligned areas
+                     * before this one, push them... uh... adjust their position
+                     */
+                    // x = screen->width / 2 - (x + ch_width) / 2 + x;
+                    area_t *a = area->prev;
+                    if (a && a->align == ALIGN_C) {
+                        int diff = (area->begin_x - a->end_x + area->end - area->begin) / 2;
+
+                        while (a && a->align == ALIGN_C) {
+                                a->begin -= diff;
+                                a->end -= diff;
+                                a = a->prev;
+                        }
+                    }
+                   break;
             case ALIGN_R:
                     area->begin -= (x - area->begin_x);
                     area->end = screen->width;
@@ -220,7 +236,7 @@ area_end (screen_t *screen, int x, int align)
                      * if there were any other right aligned areas
                      * before this one, push them left
                      */
-                    area_t *a = area->prev;
+                    a = area->prev;
                     if (a && a->align == ALIGN_R) {
                         int diff = area->begin_x - a->end_x + area->end - area->begin;
 
