@@ -30,30 +30,5 @@
 #define COLOR9 0xcc6666
 #define FOREGROUND 0xc5c8c6
 
-/* Clickable areas */
-#define NUM_AREAS 22
-#define AREAA "~/.config/bspwm/panel/scripts/spawn_dmenu"
-#define AREAB "bspc desktop -f ^1"
-#define AREAC "bspc desktop -f ^2"
-#define AREAD "bspc desktop -f ^3"
-#define AREAE "bspc desktop -f ^4"
-#define AREAF "bspc desktop -f ^5"
-#define AREAG "bspc desktop -f ^6"
-#define AREAH "bspc desktop -f ^7"
-#define AREAI "bspc desktop -f ^8"
-#define AREAJ "bspc desktop -f ^9"
-#define AREAK "bspc desktop -f ^10"
-#define AREAL "bspc desktop -l next"
-#define AREAM "~/.config/bspwm/panel/scripts/toggle_conky net"
-#define AREAN "~/.config/bspwm/panel/scripts/toggle_conky disk"
-#define AREAO "~/.config/bspwm/panel/scripts/toggle_conky mem"
-#define AREAP "~/.config/bspwm/panel/scripts/toggle_conky cpu"
-#define AREAQ "~/.config/bspwm/panel/scripts/toggle_conky temp"
-#define AREAR "~/.config/bspwm/panel/scripts/toggle_conky mpd"
-#define AREAS "~/.config/bspwm/panel/scripts/toggle_conky cal"
-#define AREAT "echo area T"
-#define AREAU "echo area U"
-#define AREAV "echo area V"
-
 /* Mouse button to react to */
 #define MOUSE_BUTTON 1

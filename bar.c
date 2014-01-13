@@ -48,12 +48,12 @@ typedef struct screen_t {
 typedef struct area_t {
     struct area_t *next;
     struct area_t *prev;
+    char *cmd;
     int begin;
     int end;
     int begin_x;
     int end_x;
     int align;
-    const char *cmd;
 } area_t;
 
 static xcb_connection_t *c;
@@ -70,8 +70,6 @@ static fontset_item_t   *sel_font = NULL;
 static screen_t         *screens;
 static int              num_screens;
 static const unsigned   palette[] = {COLOR0,COLOR1,COLOR2,COLOR3,COLOR4,COLOR5,COLOR6,COLOR7,COLOR8,COLOR9,BACKGROUND,FOREGROUND};
-static const char       *area_cmd[] = {AREAA,AREAB,AREAC,AREAD,AREAE,AREAF,AREAG,AREAH,AREAI,AREAJ,AREAK,
-                                    AREAL,AREAM,AREAN,AREAO,AREAP,AREAQ,AREAR,AREAS,AREAT,AREAU,AREAV};
 static area_t           *area_list_head;
 static area_t           *area_list_tail;
 
@@ -172,13 +170,12 @@ draw_char (screen_t *screen, int x, int align, wchar_t ch)
 }
 
 static void
-area_begin (screen_t *screen, int x, int align, int num)
+area_begin (screen_t *screen, int x, int align)
 {
     area_t *area = calloc (1, sizeof (*area));
 
     area->align = align;
     area->begin_x = x;
-    area->cmd = area_cmd[num];
 
     switch (align) {
             case ALIGN_L:
@@ -204,7 +201,7 @@ area_begin (screen_t *screen, int x, int align, int num)
 }
 
 static void
-area_end (screen_t *screen, int x, int align, int num)
+area_end (screen_t *screen, int x, int align)
 {
     area_t *area = area_list_tail;
     area->end_x = x;
@@ -244,7 +241,7 @@ parse (char *text)
 
     int pos_x = 0;
     int align = 0;
-    int area = 0;
+    char *cmd_start = 0;
     screen_t *screen = &screens[0];
 
     xcb_fill_rect (clear_gc, 0, 0, bar_width, BAR_HEIGHT);
@@ -311,8 +308,23 @@ parse (char *text)
                         pos_x = 0; 
                         break;
                     case 'a':
-                        islower(*p) ? area_begin(screen, pos_x, align, (area = (*p)-'a'))
-                                    : area_end(screen, pos_x, align, area);
+                        switch (*p) {
+                            case 'b':
+                                area_begin(screen, pos_x, align);
+                                break;
+                            case 'c':
+                                if (p++)
+                                    cmd_start = p;
+                                    while (p++ && *p != '\0' && *p != '\n' && *p != '\\')
+                                        ;
+                                    continue;
+                            case 'e':
+                                area_end(screen, pos_x, align);
+                                size_t cmd_len = (size_t)(p - cmd_start) - 2;
+                                area_list_tail->cmd = calloc(cmd_len + 1, sizeof(char));
+                                strncpy(area_list_tail->cmd, cmd_start, cmd_len);
+                                break;
+                        }
                         p++;
                         break;
                 }
@@ -591,6 +603,7 @@ clear_area_list (void)
         while (area_list_head) {
                 area_t *a = area_list_head;
                 area_list_head = area_list_head->next;
+                free(a->cmd);
                 free(a);
         }
 }
