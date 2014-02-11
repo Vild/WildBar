@@ -64,7 +64,7 @@ static xcb_gcontext_t   underl_gc;
 static int              bar_width;
 static int              bar_bottom = BAR_BOTTOM;
 static int              force_docking = 0;
-static fontset_item_t   fontset[FONT_MAX]; 
+static fontset_item_t   fontset[FONT_MAX];
 static fontset_item_t   *sel_font = NULL;
 
 static screen_t         *screens;
@@ -127,7 +127,7 @@ xcb_handle_event (int16_t x)
 }
 
 int
-draw_char (screen_t *screen, int x, int align, wchar_t ch)
+draw_char (screen_t *screen, int x, int align, uint16_t ch)
 {
     int ch_width;
 
@@ -163,7 +163,7 @@ draw_char (screen_t *screen, int x, int align, wchar_t ch)
             (xcb_char2b_t *)&ch);
 
     /* Draw the underline */
-    if (BAR_UNDERLINE_HEIGHT) 
+    if (BAR_UNDERLINE_HEIGHT)
         xcb_fill_rect (underl_gc, x + screen->x, BAR_UNDERLINE*(BAR_HEIGHT-BAR_UNDERLINE_HEIGHT), ch_width, BAR_UNDERLINE_HEIGHT);
 
     return ch_width;
@@ -263,41 +263,39 @@ parse (char *text)
     xcb_fill_rect (clear_gc, 0, 0, bar_width, BAR_HEIGHT);
 
     for (;;) {
-        if (*p == '\0')
-            return;
-        if (*p == '\n')
+        if (*p == '\0' || *p == '\n')
             return;
 
         if (*p == '\\' && p++ && *p != '\\' && strchr (control_characters, *p)) {
                 switch (*p++) {
-                    case 'f': 
-                        xcb_set_fg (isdigit(*p) ? (*p)-'0' : 11);
+                    case 'f':
+                        xcb_set_fg (isdigit(*p) ? *p-'0' : 11);
                         p++;
                         break;
-                    case 'b': 
-                        xcb_set_bg (isdigit(*p) ? (*p)-'0' : 10);
+                    case 'b':
+                        xcb_set_bg (isdigit(*p) ? *p-'0' : 10);
                         p++;
                         break;
-                    case 'u': 
-                        xcb_set_ud (isdigit(*p) ? (*p)-'0' : 10);
+                    case 'u':
+                        xcb_set_ud (isdigit(*p) ? *p-'0' : 10);
                         p++;
                         break;
 #if XINERAMA
                     case 's':
-                        if ((*p) == 'r') {
+                        if (*p == 'r') {
                             screen = &screens[num_screens - 1];
-                        } else if ((*p) == 'l') {
+                        } else if (*p == 'l') {
                             screen = &screens[0];
-                        } else if ((*p) == 'n') {
+                        } else if (*p == 'n') {
                             if (screen == &screens[num_screens - 1])
                                 break;
                             screen++;
-                        } else if ((*p) == 'p') {
+                        } else if (*p == 'p') {
                             if (screen == screens)
                                 break;
                             screen--;
                         } else if (isdigit(*p)) {
-                            int index = (*p)-'0';
+                            int index = *p-'0';
                             if (index < num_screens) {
                                 screen = &screens[index];
                             } else {
@@ -311,17 +309,17 @@ parse (char *text)
                         p++;
                         break;
 #endif
-                    case 'l': 
-                        align = ALIGN_L; 
-                        pos_x = 0; 
+                    case 'l':
+                        align = ALIGN_L;
+                        pos_x = 0;
                         break;
-                    case 'c': 
-                        align = ALIGN_C; 
-                        pos_x = 0; 
+                    case 'c':
+                        align = ALIGN_C;
+                        pos_x = 0;
                         break;
-                    case 'r': 
-                        align = ALIGN_R; 
-                        pos_x = 0; 
+                    case 'r':
+                        align = ALIGN_R;
+                        pos_x = 0;
                         break;
                     case 'a':
                         switch (*p) {
@@ -345,32 +343,33 @@ parse (char *text)
                         break;
                 }
         } else { /* utf-8 -> ucs-2 */
-            wchar_t t;
+            uint8_t *utf = (uint8_t *)p;
+            uint16_t ucs;
 
-            if (!(p[0] & 0x80)) {
-                t  = p[0]; 
-                p += 1;
+            if (utf[0] < 0x80) {
+                ucs = utf[0];
+                p  += 1;
             }
-            else if ((p[0] & 0xe0) == 0xc0 && (p[1] & 0xc0) == 0x80) {
-                t  = (p[0] & 0x1f) << 6 | (p[1] & 0x3f);
+            else if ((utf[0] & 0xe0) == 0xc0) {
+                ucs = (utf[0] & 0x1f) << 6 | (utf[1] & 0x3f);
                 p += 2;
             }
-            else if ((p[0] & 0xf0) == 0xe0 && (p[1] & 0xc0) == 0x80 && (p[2] & 0xc0) == 0x80) {
-                t  = (p[0] & 0xf) << 12 | (p[1] & 0x3f) << 6 | (p[2] & 0x3f);
+            else if ((utf[0] & 0xf0) == 0xe0) {
+                ucs = (utf[0] & 0xf) << 12 | (utf[1] & 0x3f) << 6 | (utf[2] & 0x3f);
                 p += 3;
             }
-            else { /* ASCII chars > 127 go in the extended latin range */
-                t  = 0xc200 + p[0];
+            else { /* Handle ascii > 0x80 */
+                ucs = utf[0];
                 p += 1;
             }
 
             /* The character is outside the main font charset, use the fallback */
-            if (t < fontset[FONT_MAIN].char_min || t > fontset[FONT_MAIN].char_max)
+            if (ucs < fontset[FONT_MAIN].char_min || ucs > fontset[FONT_MAIN].char_max)
                 xcb_set_fontset (FONT_FALLBACK);
             else
                 xcb_set_fontset (FONT_MAIN);
 
-            pos_x += draw_char (screen, pos_x, align, t);
+            pos_x += draw_char (screen, pos_x, align, ucs);
         }
     }
 }
@@ -427,7 +426,7 @@ enum {
 };
 
 void
-set_ewmh_atoms ()
+set_ewmh_atoms (void)
 {
     const char *atom_names[] = {
         "_NET_WM_WINDOW_TYPE",
@@ -570,7 +569,7 @@ init (void)
     cur_screen->width -= BAR_OFFSET;
 
     /* Shift */
-    if (cur_screen > screens) 
+    if (cur_screen > screens)
         memmove (screens, cur_screen, sizeof(screen_t) * num_screens);
 
     /* Reallocate */
@@ -655,17 +654,17 @@ cleanup (void)
 void
 sighandle (int signal)
 {
-    if (signal == SIGINT || signal == SIGTERM) 
+    if (signal == SIGINT || signal == SIGTERM)
         exit (0);
 }
 
-int 
+int
 main (int argc, char **argv)
 {
     char input[1024] = {0, };
-    struct pollfd pollin[2] = { 
-        { .fd = STDIN_FILENO, .events = POLLIN }, 
-        { .fd = -1          , .events = POLLIN }, 
+    struct pollfd pollin[2] = {
+        { .fd = STDIN_FILENO, .events = POLLIN },
+        { .fd = -1          , .events = POLLIN },
     };
 
     xcb_generic_event_t *ev;
@@ -677,12 +676,12 @@ main (int argc, char **argv)
     char ch;
     while ((ch = getopt (argc, argv, "phbf")) != -1) {
         switch (ch) {
-            case 'h': 
+            case 'h':
                 printf ("usage: %s [-p | -h] [-b]\n"
                         "\t-h Show this help\n"
                         "\t-b Put bar at the bottom of the screen\n"
                         "\t-f Force docking (use this if your WM isn't EWMH compliant)\n"
-                        "\t-p Don't close after the data ends\n", argv[0]); 
+                        "\t-p Don't close after the data ends\n", argv[0]);
                 exit (0);
             case 'p': permanent = 1; break;
             case 'b': bar_bottom = 1; break;
@@ -709,7 +708,8 @@ main (int argc, char **argv)
                 else           break;               /* ...bail out */
             }
             if (pollin[0].revents & POLLIN) { /* New input, process it */
-                fgets (input, sizeof(input), stdin);
+                if (fgets (input, sizeof(input), stdin) == NULL)
+                    break; /* EOF received */
                 clear_area_list();
                 parse (input);
                 redraw = 1;
@@ -720,7 +720,7 @@ main (int argc, char **argv)
                     switch (ev->response_type & ~0x80) {
                         case XCB_EXPOSE:
                             expose_ev = (xcb_expose_event_t *)ev;
-                            if (expose_ev->count == 0) redraw = 1; 
+                            if (expose_ev->count == 0) redraw = 1;
                         break;
                         case XCB_BUTTON_RELEASE:
                             button_ev = (xcb_button_release_event_t *)ev;
