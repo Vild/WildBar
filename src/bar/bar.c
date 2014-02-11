@@ -659,7 +659,7 @@ sighandle (int signal)
 }
 
 int
-main (int argc, char **argv)
+bar_main (int argc, char **argv)
 {
     char input[1024] = {0, };
     struct pollfd pollin[2] = {

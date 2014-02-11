@@ -1,5 +1,5 @@
-config.h
-bar
-*.o
-*.swp
-*~
+.ninja*
+bin
+obj
+*.cbp
+*.layout

@@ -1,49 +1,20 @@
-CC	?= gcc
-STRIP ?= strip
-CFLAGS = -std=c99 -O2
-LDFLAGS = -lxcb
-XINERAMA ?= 0
-ifneq "$(XINERAMA)" "0"
-	LDFLAGS += -lxcb-xinerama
-	CFLAGS  += -DXINERAMA=${XINERAMA}
-endif
-CFDEBUG = -g3 -pedantic -Wall -Wunused-parameter -Wlong-long\
-		  -Wsign-conversion -Wconversion -Wimplicit-function-declaration
+.PHONY: Ninja cleanNinja all clean check_target files
 
-EXEC = bar
-SRCS = bar.c
-OBJS = ${SRCS:.c=.o}
+DefaultTarget = WildBar
 
-PREFIX?=/usr
-BINDIR=${PREFIX}/bin
+Ninja: all
+cleanNinja: clean
 
-all: ${EXEC}
-
-.c.o:
-	${CC} ${CFLAGS} -o $@ -c $<
-
-${OBJS}: config.h
-
-config.h:
-	@echo creating $@ from config.def.h
-	@cp config.def.h $@
-
-${EXEC}: ${OBJS}
-	${CC} -o ${EXEC} ${OBJS} ${LDFLAGS}
-	${STRIP} -s ${EXEC}
-
-debug: ${EXEC}
-debug: CC += ${CFDEBUG}
+all: check_target files
+	ninja
 
 clean:
-	rm -rf ./*.o
-	rm -rf ./${EXEC}
+	ninja -t clean -g
 
-install: bar
-	test -d ${DESTDIR}${BINDIR} || mkdir -p ${DESTDIR}${BINDIR}
-	install -m755 bar ${DESTDIR}${BINDIR}/bar
+check_target:
+ifndef TARGET
+TARGET = ${DefaultTarget}
+endif
 
-uninstall:
-	rm -f ${DESTDIR}${BINDIR}/bar
-
-.PHONY: all debug clean install
+files:
+	chmod +x files.sh ; TARGET=${TARGET} ./files.sh > files.ninja
