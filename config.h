@@ -23,7 +23,7 @@ enum
 /* Configuring starts here */
 
 i bar_width = -1; /* The width of the bar. Set to -1 to fit screen */
-i bar_height = 18; /* The height of the bar (in pixels) */
+i bar_height = 14; /* The height of the bar (in pixels) */
 
 ci bar_offset = 0; /* Offset from the left. Set to 0 to have no effect */
 

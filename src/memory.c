@@ -2,8 +2,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "memory.h"
+#undef malloc
+#undef free
+
 
 struct allocation * first = NULL;
 
@@ -42,7 +44,7 @@ void * mem_alloc_(int size, const char * file, const char * function, int line)
   return alloc->memory;
 }
 
-void mem_free_(void * memory)
+void mem_free_(void * memory, const char * file, const char * function, int line)
 {
   struct allocation * prev = NULL;
   struct allocation * cur = first;
@@ -67,7 +69,7 @@ void mem_free_(void * memory)
     cur = cur->next;
   }
 
-  fprintf(stderr, "Trying to unallocate memory we didn't allocate: %p!  Freeing it for anyway, expect unknown behavior!\n", memory);
+  fprintf(stderr, "Trying to unallocate memory we didn't allocate: %p!  Freeing it for anyway, expect unknown behavior! @ %s:%s:%i\n", memory, file, function, line);
 
   /* We did not allocate this memory! Freeing it for anyway, expect unknown behavior! */
   free(memory);

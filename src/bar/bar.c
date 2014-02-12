@@ -5,7 +5,6 @@
 #include <ctype.h>
 #include <signal.h>
 #include <poll.h>
-#include <getopt.h>
 #include <unistd.h>
 #include <xcb/xcb.h>
 #if XINERAMA
@@ -18,6 +17,8 @@
 // Here be dragons
 
 #define MAX(a,b) ((a > b) ? a : b)
+
+int quit = 0;
 
 typedef struct fontset_item_t {
     xcb_font_t      xcb_ft;
@@ -62,7 +63,7 @@ static xcb_drawable_t   canvas;
 static xcb_gcontext_t   draw_gc;
 static xcb_gcontext_t   clear_gc;
 static xcb_gcontext_t   underl_gc;
-static int              force_docking = 0;
+       int              force_docking = 0;
 static fontset_item_t   fontset[FONT_MAX];
 static fontset_item_t   *sel_font = NULL;
 
@@ -653,71 +654,67 @@ void
 sighandle (int signal)
 {
     if (signal == SIGINT || signal == SIGTERM)
-        exit (0);
+        quit = 1;
 }
 
 int
-bar_main (int argc, char **argv)
+bar_main ()
 {
-    char *input = NULL;
-    struct pollfd pollin = {.fd = -1, .events = POLLIN};
+    struct pollfd pollin[1] =
+      {
+        { .fd = -1, .events = POLLIN },
+      };
 
     xcb_generic_event_t *ev;
     xcb_expose_event_t *expose_ev;
     xcb_button_release_event_t *button_ev;
 
-    char ch;
-    while ((ch = getopt (argc, argv, "hbf")) != -1) {
-        switch (ch) {
-            case 'h':
-                printf ("usage: %s [-h | -f]\n"
-                        "\t-h Show this help\n"
-                        "\t-f Force docking (use this if your WM isn't EWMH compliant)\n", argv[0]);
-                exit (0);
-            case 'f': force_docking = 1; break;
-        }
-    }
-
-    atexit (cleanup);
     signal (SIGINT, sighandle);
     signal (SIGTERM, sighandle);
     init ();
 
     /* Get the fd to Xserver */
-    pollin.fd = xcb_get_file_descriptor (c);
+    pollin[0].fd = xcb_get_file_descriptor(c);
 
     xcb_fill_rect (clear_gc, 0, 0, bar_width, bar_height);
 
-    for (;;) {
+    while (!quit) {
         int redraw = 0;
 
-        if (poll (&pollin, 1, -1) > 0) {
-            if (pollin.revents & POLLIN) { /* Xserver broadcasted an event */
-                while ((ev = xcb_poll_for_event (c))) {
+        if(poll(pollin, 1, -1) > 0)
+        {
+            if(pollin[1].revents & POLLIN)   /* Xserver broadcasted an event */
+            {
+                while((ev = xcb_poll_for_event(c)))
+                {
+                  switch(ev->response_type & ~0x80)
+                  {
+                    case XCB_EXPOSE:
+                      expose_ev =(xcb_expose_event_t *)ev;
 
-                    switch (ev->response_type & ~0x80) {
-                        case XCB_EXPOSE:
-                            expose_ev = (xcb_expose_event_t *)ev;
-                            if (expose_ev->count == 0) redraw = 1;
-                        break;
-                        case XCB_BUTTON_RELEASE:
-                            button_ev = (xcb_button_release_event_t *)ev;
-                            if (button_ev->detail == mouse_button)
-                                xcb_handle_event (button_ev->event_x);
-                    }
+                      if(expose_ev->count == 0) redraw = 1;
 
-                    free (ev);
+                      break;
+
+                    case XCB_BUTTON_RELEASE:
+                      button_ev =(xcb_button_release_event_t *)ev;
+
+                      if(button_ev->detail == mouse_button)
+                        xcb_handle_event(button_ev->event_x);
+                  }
+
+                  free(ev);
                 }
             }
         }
 
 
-        input = wildbar_getLine();
+        char * input = wildbar_getLine();
+
         if (input != NULL)
         {
-          parse(input);
-          redraw = 1;
-          input = NULL;
+            parse(input);
+            redraw = 1;
         }
 
         if (redraw) /* Copy our temporary pixmap onto the window */
@@ -726,6 +723,8 @@ bar_main (int argc, char **argv)
 
         xcb_flush (c);
     }
+
+    cleanup();
 
     return 0;
 }
