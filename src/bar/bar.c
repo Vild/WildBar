@@ -13,6 +13,7 @@
 #endif
 
 #include "config.h"
+#include "../wildbar.h"
 
 // Here be dragons
 
@@ -661,29 +662,22 @@ sighandle (int signal)
 int
 bar_main (int argc, char **argv)
 {
-    char input[1024] = {0, };
-    struct pollfd pollin[2] = {
-        { .fd = STDIN_FILENO, .events = POLLIN },
-        { .fd = -1          , .events = POLLIN },
-    };
+    char *input = NULL;
+    struct pollfd pollin = {.fd = -1, .events = POLLIN};
 
     xcb_generic_event_t *ev;
     xcb_expose_event_t *expose_ev;
     xcb_button_release_event_t *button_ev;
 
-    int permanent = 0;
-
     char ch;
-    while ((ch = getopt (argc, argv, "phbf")) != -1) {
+    while ((ch = getopt (argc, argv, "hbf")) != -1) {
         switch (ch) {
             case 'h':
                 printf ("usage: %s [-p | -h] [-b]\n"
                         "\t-h Show this help\n"
                         "\t-b Put bar at the bottom of the screen\n"
-                        "\t-f Force docking (use this if your WM isn't EWMH compliant)\n"
-                        "\t-p Don't close after the data ends\n", argv[0]);
+                        "\t-f Force docking (use this if your WM isn't EWMH compliant)\n", argv[0]);
                 exit (0);
-            case 'p': permanent = 1; break;
             case 'b': bar_bottom = 1; break;
             case 'f': force_docking = 1; break;
         }
@@ -695,26 +689,15 @@ bar_main (int argc, char **argv)
     init ();
 
     /* Get the fd to Xserver */
-    pollin[1].fd = xcb_get_file_descriptor (c);
+    pollin.fd = xcb_get_file_descriptor (c);
 
     xcb_fill_rect (clear_gc, 0, 0, bar_width, BAR_HEIGHT);
 
     for (;;) {
         int redraw = 0;
 
-        if (poll (pollin, 2, -1) > 0) {
-            if (pollin[0].revents & POLLHUP) {      /* No more data... */
-                if (permanent) pollin[0].fd = -1;   /* ...null the fd and continue polling :D */
-                else           break;               /* ...bail out */
-            }
-            if (pollin[0].revents & POLLIN) { /* New input, process it */
-                if (fgets (input, sizeof(input), stdin) == NULL)
-                    break; /* EOF received */
-                clear_area_list();
-                parse (input);
-                redraw = 1;
-            }
-            if (pollin[1].revents & POLLIN) { /* Xserver broadcasted an event */
+        if (poll (&pollin, 1, -1) > 0) {
+            if (pollin.revents & POLLIN) { /* Xserver broadcasted an event */
                 while ((ev = xcb_poll_for_event (c))) {
 
                     switch (ev->response_type & ~0x80) {
@@ -731,6 +714,15 @@ bar_main (int argc, char **argv)
                     free (ev);
                 }
             }
+        }
+
+
+        input = wildbar_getLine();
+        if (input != NULL)
+        {
+          parse(input);
+          redraw = 1;
+          input = NULL;
         }
 
         if (redraw) /* Copy our temporary pixmap onto the window */

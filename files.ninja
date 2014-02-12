@@ -1,5 +1,0 @@
-build obj/main.c.o: cc src/main.c 
-build obj/bar.c.o: cc src/bar/bar.c 
-
-build bin/WildBar: link  obj/main.c.o obj/bar.c.o
-default bin/WildBar

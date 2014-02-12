@@ -1,6 +1,5 @@
 #include <stdio.h>
-
-extern int bar_main(int argc, char ** argv);
+#include "wildbar.h"
 
 int main(int argc, char ** argv)
 {
