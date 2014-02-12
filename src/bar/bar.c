@@ -12,7 +12,7 @@
 #include <xcb/xinerama.h>
 #endif
 
-#include "config.h"
+#include "../../config.h"
 #include "../wildbar.h"
 
 // Here be dragons
@@ -62,15 +62,12 @@ static xcb_drawable_t   canvas;
 static xcb_gcontext_t   draw_gc;
 static xcb_gcontext_t   clear_gc;
 static xcb_gcontext_t   underl_gc;
-static int              bar_width;
-static int              bar_bottom = BAR_BOTTOM;
 static int              force_docking = 0;
 static fontset_item_t   fontset[FONT_MAX];
 static fontset_item_t   *sel_font = NULL;
 
 static screen_t         *screens;
 static int              num_screens;
-static const unsigned   palette[] = {COLOR0,COLOR1,COLOR2,COLOR3,COLOR4,COLOR5,COLOR6,COLOR7,COLOR8,COLOR9,BACKGROUND,FOREGROUND};
 static area_t           *area_list_head;
 static area_t           *area_list_tail;
 
@@ -138,34 +135,34 @@ draw_char (screen_t *screen, int x, int align, uint16_t ch)
 
     /* Some fonts (such as anorexia) have the space char with the width set to 0 */
     if (ch_width == 0)
-        ch_width = BAR_FONT_FALLBACK_WIDTH;
+        ch_width = bar_font_fallback_width;
 
     switch (align) {
         case ALIGN_C:
             xcb_copy_area (c, canvas, canvas, draw_gc, screen->width / 2 - x / 2 + screen->x, 0,
-                    screen->width / 2 - (x + ch_width) / 2 + screen->x, 0, x, BAR_HEIGHT);
+                    screen->width / 2 - (x + ch_width) / 2 + screen->x, 0, x, bar_height);
             x = screen->width / 2 - (x + ch_width) / 2 + x;
             break;
         case ALIGN_R:
             xcb_copy_area (c, canvas, canvas, draw_gc, screen->width - x + screen->x, 0,
-                    screen->width - x - ch_width + screen->x, 0, x, BAR_HEIGHT);
+                    screen->width - x - ch_width + screen->x, 0, x, bar_height);
             x = screen->width - ch_width;
             break;
     }
 
     /* Draw the background first */
-    xcb_fill_rect (clear_gc, x + screen->x, 0, ch_width, BAR_HEIGHT);
+    xcb_fill_rect (clear_gc, x + screen->x, 0, ch_width, bar_height);
 
     /* xcb accepts string in UCS-2 BE, so swap */
     ch = (ch >> 8) | (ch << 8);
 
     /* String baseline coordinates */
-    xcb_image_text_16 (c, 1, canvas, draw_gc, x + screen->x, BAR_HEIGHT / 2 + sel_font->avg_height / 2 - sel_font->descent,
+    xcb_image_text_16 (c, 1, canvas, draw_gc, x + screen->x, bar_height / 2 + sel_font->avg_height / 2 - sel_font->descent,
             (xcb_char2b_t *)&ch);
 
     /* Draw the underline */
-    if (BAR_UNDERLINE_HEIGHT)
-        xcb_fill_rect (underl_gc, x + screen->x, BAR_UNDERLINE*(BAR_HEIGHT-BAR_UNDERLINE_HEIGHT), ch_width, BAR_UNDERLINE_HEIGHT);
+    if (bar_underline_height)
+        xcb_fill_rect (underl_gc, x + screen->x, bar_underline*(bar_height-bar_underline_height), ch_width, bar_underline_height);
 
     return ch_width;
 }
@@ -261,7 +258,7 @@ parse (char *text)
     char *cmd_start = 0;
     screen_t *screen = &screens[0];
 
-    xcb_fill_rect (clear_gc, 0, 0, bar_width, BAR_HEIGHT);
+    xcb_fill_rect (clear_gc, 0, 0, bar_width, bar_height);
 
     for (;;) {
         if (*p == '\0' || *p == '\n')
@@ -463,16 +460,16 @@ set_ewmh_atoms (void)
     for (screen_t *cur_screen = screens; cur_screen < screens+num_screens; cur_screen++) {
         int strut[12] = {0};
         if (bar_bottom) {
-            strut[3]  = BAR_HEIGHT;
+            strut[3]  = bar_height;
             strut[10] = cur_screen->x;
             strut[11] = cur_screen->x + cur_screen->width;
         } else {
-            strut[2] = BAR_HEIGHT;
+            strut[2] = bar_height;
             strut[8] = cur_screen->x;
             strut[9] = cur_screen->x + cur_screen->width;
         }
 
-        xcb_change_property (c, XCB_PROP_MODE_REPLACE, cur_screen->window, atom_list[NET_WM_WINDOW_OPACITY], XCB_ATOM_CARDINAL, 32, 1, (const uint32_t []){ (uint32_t)(BAR_OPACITY * 0xffffffff) } );
+        xcb_change_property (c, XCB_PROP_MODE_REPLACE, cur_screen->window, atom_list[NET_WM_WINDOW_OPACITY], XCB_ATOM_CARDINAL, 32, 1, (const uint32_t []){ (uint32_t)(bar_opacity * 0xffffffff) } );
         xcb_change_property (c, XCB_PROP_MODE_REPLACE, cur_screen->window, atom_list[NET_WM_WINDOW_TYPE], XCB_ATOM_ATOM, 32, 1, &atom_list[NET_WM_WINDOW_TYPE_DOCK]);
         xcb_change_property (c, XCB_PROP_MODE_APPEND,  cur_screen->window, atom_list[NET_WM_STATE], XCB_ATOM_ATOM, 32, 2, &atom_list[NET_WM_STATE_STICKY]);
         xcb_change_property (c, XCB_PROP_MODE_REPLACE, cur_screen->window, atom_list[NET_WM_DESKTOP], XCB_ATOM_CARDINAL, 32, 1, (const uint32_t []){ -1 } );
@@ -517,10 +514,10 @@ init (void)
     root = scr->root;
 
     /* where to place the window */
-    bar_width = (BAR_WIDTH < 0) ? (scr->width_in_pixels - BAR_OFFSET) : BAR_WIDTH;
+    bar_width = (bar_width < 0) ? (scr->width_in_pixels - bar_offset) : bar_width;
 
     /* Load the font */
-    if (font_load ((const char* []){ BAR_FONT }))
+    if (font_load (bar_font))
         exit (1);
 
     /* Generate a list of screens */
@@ -539,7 +536,7 @@ init (void)
         exit (1);
 
     /* Add BAR_OFFSET to the last screen */
-    int right_bar_offset = scr->width_in_pixels - bar_width - BAR_OFFSET;
+    int right_bar_offset = scr->width_in_pixels - bar_width - bar_offset;
     for (cur_screen = &screens[num_screens-1]; cur_screen >= screens; xcb_xinerama_screen_info_next (&xinerama_iter), cur_screen--) {
         cur_screen->width = xinerama_iter.data->width;
         if (right_bar_offset > 0) {
@@ -553,10 +550,10 @@ init (void)
             }
         }
 
-        cur_screen->x = xinerama_iter.data->x_org - BAR_OFFSET;
+        cur_screen->x = xinerama_iter.data->x_org - bar_offset;
         /* Create the main window */
-        int y = ( bar_bottom ? ( xinerama_iter.data->height - BAR_HEIGHT ) : 0 ) + xinerama_iter.data->y_org;
-        cur_screen->window = create_window( root, cur_screen->x, y, cur_screen->width, BAR_HEIGHT, scr->root_visual );
+        int y = ( bar_bottom ? ( xinerama_iter.data->height - bar_height ) : 0 ) + xinerama_iter.data->y_org;
+        cur_screen->window = create_window( root, cur_screen->x, y, cur_screen->width, bar_height, scr->root_visual );
 
         if (cur_screen->x < 0) {
             /* First screen */
@@ -567,7 +564,7 @@ init (void)
     free(xinerama_reply);
 
     /* Remove BAR_OFFSET from the first screen */
-    cur_screen->width -= BAR_OFFSET;
+    cur_screen->width -= bar_offset;
 
     /* Shift */
     if (cur_screen > screens)
@@ -593,7 +590,7 @@ init (void)
 
     /* Create a temporary canvas */
     canvas = xcb_generate_id (c);
-    xcb_create_pixmap (c, scr->root_depth, canvas, root, bar_width, BAR_HEIGHT);
+    xcb_create_pixmap (c, scr->root_depth, canvas, root, bar_width, bar_height);
 
     /* Create the gc for drawing */
     draw_gc = xcb_generate_id (c);
@@ -673,12 +670,10 @@ bar_main (int argc, char **argv)
     while ((ch = getopt (argc, argv, "hbf")) != -1) {
         switch (ch) {
             case 'h':
-                printf ("usage: %s [-p | -h] [-b]\n"
+                printf ("usage: %s [-h | -f]\n"
                         "\t-h Show this help\n"
-                        "\t-b Put bar at the bottom of the screen\n"
                         "\t-f Force docking (use this if your WM isn't EWMH compliant)\n", argv[0]);
                 exit (0);
-            case 'b': bar_bottom = 1; break;
             case 'f': force_docking = 1; break;
         }
     }
@@ -691,7 +686,7 @@ bar_main (int argc, char **argv)
     /* Get the fd to Xserver */
     pollin.fd = xcb_get_file_descriptor (c);
 
-    xcb_fill_rect (clear_gc, 0, 0, bar_width, BAR_HEIGHT);
+    xcb_fill_rect (clear_gc, 0, 0, bar_width, bar_height);
 
     for (;;) {
         int redraw = 0;
@@ -707,7 +702,7 @@ bar_main (int argc, char **argv)
                         break;
                         case XCB_BUTTON_RELEASE:
                             button_ev = (xcb_button_release_event_t *)ev;
-                            if (button_ev->detail == MOUSE_BUTTON)
+                            if (button_ev->detail == mouse_button)
                                 xcb_handle_event (button_ev->event_x);
                     }
 
@@ -727,7 +722,7 @@ bar_main (int argc, char **argv)
 
         if (redraw) /* Copy our temporary pixmap onto the window */
             for (screen_t* cur_screen = screens; cur_screen < screens + num_screens; cur_screen++)
-                xcb_copy_area (c, canvas, cur_screen->window, draw_gc, cur_screen->x, 0, 0, 0, cur_screen->width, BAR_HEIGHT);
+                xcb_copy_area (c, canvas, cur_screen->window, draw_gc, cur_screen->x, 0, 0, 0, cur_screen->width, bar_height);
 
         xcb_flush (c);
     }
