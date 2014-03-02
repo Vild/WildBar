@@ -3,9 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "memory.h"
-#undef malloc
-#undef free
-
 
 struct allocation * first = NULL;
 
@@ -26,7 +23,7 @@ static void put(struct allocation * alloc)
 
 void * mem_alloc_(int size, const char * file, const char * function, int line)
 {
-  struct allocation * alloc = (struct allocation *)malloc(sizeof(struct allocation));
+  struct allocation * alloc = (struct allocation *)calloc(sizeof(struct allocation), 1);
   assert(alloc != NULL);
 
   alloc->memory = malloc(size);
@@ -75,7 +72,7 @@ void mem_free_(void * memory, const char * file, const char * function, int line
   free(memory);
 }
 
-char * mem_strdup(char * str)
+char * mem_strdup(const char * str)
 {
   char * mem;
   int len = strlen(str) + 1;
@@ -84,13 +81,14 @@ char * mem_strdup(char * str)
   return mem;
 }
 
-void mem_freeleaks()
+void mem_freeleaks(int quiet)
 {
   struct allocation * cur = first;
 
   while (cur != NULL)
   {
-    fprintf(stderr, "MEMORY LEAK %p:%i @ %s:%s:%i\n", cur->memory, cur->size, cur->file, cur->function, cur->line);
+    if (!quiet)
+      fprintf(stderr, "MEMORY LEAK %p:%i @ %s:%s:%i\n", cur->memory, cur->size, cur->file, cur->function, cur->line);
 
     /* Moves the first element to the next one */
     first = cur->next;

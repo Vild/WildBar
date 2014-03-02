@@ -1,5 +1,5 @@
 cflags = -Wall -Werror -pedantic -g --std=c11 -DXINERAMA=1 -fshort-wchar
-lflags = -g -lm -lxcb -lxcb-xinerama
+lflags = -g -lm -lxcb -lxcb-xinerama -ljansson
 
 rule cc
      command = gcc $cflags -c $in -o $out

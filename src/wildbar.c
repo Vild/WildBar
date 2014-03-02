@@ -16,17 +16,26 @@
 
 #include "memory.h"
 #include "process.h"
-#include "icons.h"
+#include "config.h"
 
-#define BUF_SIZE 8*1024
-#define TMPBUF_SIZE 4*1024
+#ifndef DEFAULT_CONFIG_FILE
+#define DEFAULT_CONFIG_FILE "wildbar.conf"
+#endif
+
+#include "status/bspwm.h"
+#include "status/date.h"
+#include "status/hostname.h"
+#include "status/icons.h"
+#include "status/mpd.h"
+#include "status/xtitle.h"
 
 static char * buf;
 static char * tmpbuf;
 
-static struct process * workspaces_pro;
-static struct process * title_pro;
-static struct process * mpd_pro;
+char * configFile = DEFAULT_CONFIG_FILE;
+static struct config * config;
+
+/*static struct process * cpu_pro;*/
 
 static struct timeval last;
 
@@ -34,157 +43,12 @@ extern int bar_bottom;
 extern int force_docking;
 extern int bar_main();
 
-static char * gethost(char * buf)
-{
-  char tmp[1024] = {0};
-  gethostname(tmp, sizeof(1024));
-  sprintf(buf, " \\f7"U_ARCHLOGO" \\f9 %s\\f7", tmp);
-  return buf;
-}
-
-static char * getworkspaces(char * buf)
-{
-  const char * pos = process_run(workspaces_pro);
-  char tmp[128] = "";
-  int length = 0;
-
-  if (pos == NULL || strlen(pos) == 0)
-  {
-    snprintf(buf, TMPBUF_SIZE, "\\u3Need a newer bspwm version\\ur");
-    return buf;
-  }
-
-#define AddStr while (*pos != ':' && *pos != '\0' && *pos != '\n') {\
-                  tmp[strlen(tmp)] = *pos; \
-                  pos++; \
-                } \
-                if (*pos == '\0') pos--;
-
-  if (*pos == '\0') pos--;
-
-  while (*pos != '\0')
-  {
-    memset(tmp, 0, 128);
-
-    switch (*pos)
-    {
-    default:
-      fprintf(stderr, "getworkspaces: Get unimplemented char: %c - %X\n", *pos, (int)*pos);
-      break;
-
-    case 'W': /* bspwm status_prefix */
-      break;
-
-    case 'M': /* Monitor*/
-    case 'm':
-      pos++;
-      AddStr
-      //length += snprintf(buf+length, TMPBUF_SIZE-length,  " \\u3\\br\\fr%s\\ur", tmp);
-      break;
-
-
-    case 'O':
-      pos++;
-      AddStr
-      length += snprintf(buf+length, TMPBUF_SIZE-length, " \\u3\\br\\fr%s\\ur", tmp);
-      break;
-
-    case 'o':
-      pos++;
-      AddStr
-      length += snprintf(buf+length, TMPBUF_SIZE-length, " \\br\\fr%s", tmp);
-      break;
-
-    case 'F':
-      pos++;
-      AddStr
-      length += snprintf(buf+length, TMPBUF_SIZE-length, " \\u4\\br\\f7%s\\ur", tmp);
-      break;
-
-    case 'f':
-      pos++;
-      AddStr
-      length += snprintf(buf+length, TMPBUF_SIZE-length, " \\br\\f7%s", tmp);
-      break;
-
-    case 'U':
-      pos++;
-      AddStr
-      length += snprintf(buf+length, TMPBUF_SIZE-length, " \\u9\\br\\fr%s\\ur", tmp);
-      break;
-
-    case 'u':
-      pos++;
-      AddStr
-      length += snprintf(buf+length, TMPBUF_SIZE-length, " \\b1\\fr%s", tmp);
-      break;
-
-    case 'L':
-      pos++;
-      AddStr
-      length += snprintf(buf+length, TMPBUF_SIZE-length, " \\f3M:%c\\fr", toupper(tmp[0]));
-      break;
-    }
-
-    pos++;
-  }
-
-#undef AddStr
-
-  return buf;
-}
-
-static char * gettitle(char * buf)
-{
-  sprintf(buf, "%s", process_run(title_pro));
-  return buf;
-}
-
-static char * getmpd(char * buf)
-{
-  int tonewline = 0;
-  char * icon;
-  char * note = "♪";
-  const char * pos;
-  const char * song = NULL;
-  int vol;
-  pos = process_run(mpd_pro);
-
-  while(pos[tonewline] != '\n')
-    tonewline++;
-
-  /* First line index '0' to 'tonewline' */
-  if (strncmp(pos, "volume: ", 8) != 0)
-  {
-    song = pos;
-    pos += tonewline + 1;
-
-    while(*pos != '\n')
-      pos++;
-
-    pos++;
-  }
-
-  pos += strlen("volume:");
-  vol = atoi(pos);
-
-  if (vol == 0)
-    icon = U_VOL_MUTE;
-  else if (vol >= 75)
-    icon = U_VOL_FULL;
-  else
-    icon = U_VOL_REST;
-
-  sprintf(buf, "%s%s %.40s \\f4|\\f7 \\f2%s %3d%%\\f7", (song == NULL ? "\\f9" : "\\f3"), note, (song == NULL ? "Stopped!" : song), icon, vol);
-  return buf;
-}
-
-static char * getram(char * buf)
+/*static char * getram(char * buf)
 {
   char * pos;
   long total, free;
   FILE * fp = fopen("/proc/meminfo", "r");
-  fread(buf, 4*1024, 1, fp);
+  fread(buf, TMPBUF_SIZE, 1, fp);
 
   fclose(fp);
 
@@ -202,35 +66,16 @@ static char * getram(char * buf)
   pos++;
   free = atol(pos);
 
-  sprintf(buf, "\\f2"U_RAM" %3d%%\\f7", 100-((int)floor(((free*1.0)/(total*1.0))*100)));
+  sprintf(buf, "\\f2"U_RAM" %3d%%\\f7", (int)round(((free*1.0)/(total*1.0))*100));
   return buf;
 }
 
 static char * getcpu(char * buf)
 {
-  //double avg[4] = {0., 0., 0., 0.};
-  //getloadavg(avg, 1);
-  //process_run(cpu_pro)
-  //if (cpu == 1)
-  //printf("\\f1");
-  sprintf(buf, "\\f2"U_CPU" %3s%%\\f7", "UNK");
+  sprintf(buf, "\\f2"U_CPU" %3s%%\\f7", process_run(cpu_pro));
   return buf;
-}
+}*/
 
-static char * gettime(char * buf)
-{
-  time_t rawtime;
-  struct tm * timeinfo;
-
-  time(&rawtime);
-  timeinfo = localtime(&rawtime);
-  sprintf(buf, "\\f6"U_TIME" %s\\f7 ", asctime(timeinfo));
-
-  if (buf[strlen(buf) - 1] == '\n')
-    buf[strlen(buf) - 1] = '\0';
-
-  return buf;
-}
 
 static int diff_ms(struct timeval t1, struct timeval t2)
 {
@@ -238,58 +83,183 @@ static int diff_ms(struct timeval t1, struct timeval t2)
           (t1.tv_usec - t2.tv_usec)) / 1000;
 }
 
-#define _n(s, ...) length += snprintf(buf+length, BUF_SIZE-length, (" "s), __VA_ARGS__)
-#define _(s, ...) length += snprintf(buf+length, BUF_SIZE-length, (" \\f4|\\f7 "s), __VA_ARGS__)
+#define _(...) length += snprintf(buf+length, BUF_SIZE-length, __VA_ARGS__)
+#define l() length += snprintf(buf+length, BUF_SIZE-length, " \\f4|\\f7 ")
+#define s() length += snprintf(buf+length, BUF_SIZE-length, " ")
 
 char * wildbar_getLine()
 {
+  const char * POS[3] = {"left", "center", "right"};
+  const int POS_LENGTH = 3;
+
+  json_t * structure, * screens, * position, * value, * pos_value;
+
+  size_t index, pos_index;
   int length = 0;
+  int i = 0;
   struct timeval now;
   gettimeofday(&now, 0);
-
 
   if (diff_ms(now, last) < 50)
     return NULL;
 
   gettimeofday(&last, 0);
 
-  _n("\\s1\\l%s", "");
-  _n("\\ab%s\\ac/home/wildn00b/.config/bspwm/scripts/spawn_dmenu\\ae", gethost(tmpbuf));
-  _n(" %s", getworkspaces(tmpbuf));
+  /*_("\\s1\\l%s", "");
+  _("\\ab%s\\ac/home/wildn00b/.config/bspwm/scripts/spawn_dmenu\\ae", gethost(tmpbuf));
+  _(" %s", getworkspaces(tmpbuf, 1));
 
-  _n("\\c %s", gettitle(tmpbuf));
+  _("\\c %s", gettitle(tmpbuf));
 
-  _n("\\r%s", "");
+  _("\\r%s", "");
 
-  _n("\\ab%s\\ac/home/wildn00b/.config/bspwm/scripts/toggle_conky mpd\\ae", getmpd(tmpbuf));
+  _("\\ab%s\\ac/home/wildn00b/.config/bspwm/scripts/toggle_conky mpd\\ae", getmpd(tmpbuf));
+  //TODO: Implement working memory and cpu code
+  /s();
   _("\\ab%s\\ac/home/wildn00b/.config/bspwm/scripts/toggle_conky mem\\ae", getram(tmpbuf));
-
-  _("\\ab%s\\ac/home/wildn00b/.config/bspwm/scripts/toggle_conky cpu\\ae", getcpu(tmpbuf));
+  s();
+  _("\\ab%s\\ac/home/wildn00b/.config/bspwm/scripts/toggle_conky cpu\\ae", getcpu(tmpbuf));/
+  l();
   _("\\ab%s\\ac/home/wildn00b/.config/bspwm/scripts/toggle_conky cal\\ae", gettime(tmpbuf));
 
+  _("\\s0\\l%s", "");
+  _(" %s", getworkspaces(tmpbuf, 2));
+
+  _("\\r%s", "");
+  _("\\ab%s\\ac/home/wildn00b/.config/bspwm/scripts/toggle_conky cal\\ae", gettime(tmpbuf));*/
+
+  structure = config_getStructure(config);
+
+  screens = json_object_get(structure, "screens");
+  json_array_foreach(screens, index, value)
+  {
+    _("\\s%d", (int)index);
+
+    for (i = 0; i < POS_LENGTH; i++)
+    {
+      position = json_object_get(value, POS[i]);
+
+      if (position)
+      {
+        _("\\%c", POS[i][0]);
+        _(" ");
+        json_array_foreach(position, pos_index, pos_value)
+        {
+          json_t * tmp;
+          const char * p_type;
+          tmp = json_object_get(pos_value, "type");
+
+          if (tmp)
+            p_type = json_string_value(tmp);
+          else
+            continue;
+
+#define GetValue(var, name, default) tmp = json_object_get(pos_value, name);\
+                                                  const char * var;\
+                                                  if (tmp)\
+                                                    var = json_string_value(tmp);\
+                                                  else\
+                                                    var = default
+
+
+          GetValue(p_value, "value", "MISSING VALUE");
+          GetValue(p_onclick, "onclick", NULL);
+
+          GetValue(p_fcolor, "fcolor", NULL);
+          GetValue(p_bcolor, "bcolor", NULL);
+          GetValue(p_ucolor, "ucolor", NULL);
+
+          GetValue(p_mplay, "play", "3");
+          GetValue(p_mstop, "stop", "9");
+
+          GetValue(p_wof, "occupied_focused", "rr3");
+          GetValue(p_wou, "occupied_unfocused", "rrr");
+          GetValue(p_wff, "free_focused", "7r4");
+          GetValue(p_wfu, "free_unfocused", "7rr");
+          GetValue(p_wuf, "urgent_focused", "rr9");
+          GetValue(p_wuu, "urgent_unfocused", "03r");
+
+          if (p_onclick)
+            _("\\ab");
+
+          if (p_fcolor)
+            _("\\f%c", p_fcolor[0]);
+
+          if (p_bcolor)
+            _("\\b%c", p_bcolor[0]);
+
+          if (p_ucolor)
+            _("\\u%c", p_ucolor[0]);
+
+          if (strcmp(p_type, "text") == 0)
+            _("%s", p_value);
+          else if (strcmp(p_type, "icon") == 0)
+            _("%s", getIcon(p_value));
+          else if (strcmp(p_type, "split") == 0)
+            _("\\f4|\\f7");
+          else if (strcmp(p_type, "workspaces") == 0)
+          {
+            int screen = 0;
+            screen = atoi(p_value);
+            _("%s", getWorkspaces(tmpbuf, screen, p_wof, p_wou, p_wff, p_wfu, p_wuf, p_wuu));
+          }
+          else if (strcmp(p_type, "date") == 0)
+            _("%s", getDate(tmpbuf));
+          else if (strcmp(p_type, "hostname") == 0)
+            _("%s", getHostName(tmpbuf));
+          else if (strcmp(p_type, "music") == 0)
+            _("%s", getMusic(tmpbuf, p_mplay, p_mstop));
+          else if (strcmp(p_type, "volume") == 0)
+            _("%s", getVolume(tmpbuf));
+          else if (strcmp(p_type, "title") == 0)
+            _("%s", getTitle(tmpbuf));
+          else
+          {
+            _("UNKNOWN TYPE: '%s' VALUE: '%s' ONCLICK: '%s'", p_type, p_value, p_onclick);
+          }
+
+          if (p_ucolor)
+            _("\\ur");
+
+          if (p_bcolor)
+            _("\\br");
+
+          if (p_fcolor)
+            _("\\fr");
+
+          if (p_onclick)
+            _("\\ac%s\\ae", p_onclick);
+
+          _(" ");
+        }
+
+      }
+    }
+  }
   return buf;
 }
+#undef l
 #undef _
 
 void wildbar_init()
 {
   buf = mem_alloc(BUF_SIZE);
   tmpbuf = mem_alloc(TMPBUF_SIZE);
-  //cpu_pro = process_new("top -bn2 | grep 'Cpu(s)' | sed 's/.*, *\\([0-9.]*\\)%* id.*/\\1/' | awk '{print 100 - $1}' | awk '{getline; print $1}' | xargs");
-  workspaces_pro = process_new("bspc control --get-status");
-  title_pro = process_new("xtitle");
-  mpd_pro = process_new("mpc");
+  config = config_new(configFile);
+
+  gettimeofday(&last, 0);
 }
 
 void wildbar_cleanup()
 {
-  process_free(mpd_pro);
+  /*process_free(mpd_pro);
   process_free(title_pro);
-  process_free(workspaces_pro);
-  //process_free(cpu_pro);
+  process_free(workspaces_pro);*/
+
+  config_free(config);
 
   mem_free(tmpbuf);
   mem_free(buf);
 
-  mem_freeleaks();
+  mem_freeleaks(0);
 }

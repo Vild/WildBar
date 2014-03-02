@@ -1,4 +1,4 @@
-.PHONY: Ninja cleanNinja all clean check_target files
+.PHONY: Ninja cleanNinja all clean check_target files run run-n
 
 DefaultTarget = WildBar
 
@@ -10,6 +10,12 @@ all: check_target files
 
 clean:
 	ninja -t clean -g
+
+run: all
+	bin/${TARGET}
+
+run-n: all
+	bin/${TARGET} -n
 
 check_target:
 ifndef TARGET

@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <ctype.h>
+#include <unistd.h>
+
 #include "wildbar.h"
 
 int main(int argc, char ** argv)
@@ -10,23 +13,44 @@ int main(int argc, char ** argv)
   char ch;
   int nobar = 0;
 
-  while((ch = getopt(argc, argv, "hnbf")) != -1)
+  while((ch = getopt(argc, argv, "hnfc:")) != -1)
   {
     switch(ch)
     {
     case 'h':
-      printf("usage: %s [-h | -n] [-f]\n"
+      printf("usage: %s [-h] [-n] [-f] [-c CONFIG]\n"
              "\t-h Show this help\n"
              "\t-n Prints out the data to the console instead of starting bar\n"
-             "\t-f Force docking(use this if your WM isn't EWMH compliant)\n", argv[0]);
+             "\t-f Force docking(use this if your WM isn't EWMH compliant)\n"
+             "\t-c Loaded the config CONFIG instead of the default ", argv[0]);
       exit(0);
 
     case 'n':
       nobar = 1;
       break;
+
     case 'f':
       force_docking = 1;
       break;
+
+    case 'c':
+      configFile = optarg;
+      break;
+
+    case '?':
+      if (optopt == 'c')
+        fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+      else if (isprint (optopt))
+        fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+      else
+        fprintf (stderr,
+                 "Unknown option character `\\x%x'.\n",
+                 optopt);
+
+      return 1;
+
+    default:
+      return 1;
     }
   }
 

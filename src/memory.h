@@ -22,9 +22,9 @@ struct allocation
 void * mem_alloc_(int size, const char * file, const char * function, int line);
 void mem_free_(void * memory, const char * file, const char * function, int line);
 
-char * mem_strdup(char * str);
+char * mem_strdup(const char * str);
 
-void mem_freeleaks();
+void mem_freeleaks(int quiet);
 
 #endif // MEMORY_H_
 

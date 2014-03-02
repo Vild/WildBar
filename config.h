@@ -5,12 +5,12 @@ enum
   OVERLINE = 0,
   UNDERLINE = 1,
 
-	TOP = 0,
-	BOTTOM = 1,
+  TOP = 0,
+  BOTTOM = 1,
 
-	LEFT = 1,
-	SCROLL = 2,
-	RIGHT = 3
+  LEFT = 1,
+  SCROLL = 2,
+  RIGHT = 3
 };
 
 
@@ -31,10 +31,11 @@ ci bar_underline = UNDERLINE; /* Choose between an UNDERLINE or an OVERLINE */
 ci bar_underline_height = 2; /* The thickness of the underline (in pixels). Set to 0 to disable. */
 ci bar_bottom = TOP; /* Bar position TOP or BOTTOM */
 
-cs bar_font[2] = { /* The fonts used for the bar, comma separated. Only the first 2 will be used. */
-	"-misc-stlarch-medium-r-normal--10-100-75-75-c-80-iso10646-1",
-	"-lucy-tewi-medium-r-normal--11-90-75-75-p-58-iso10646-1"
-	};
+cs bar_font[2] =   /* The fonts used for the bar, comma separated. Only the first 2 will be used. */
+{
+  "-misc-stlarch-medium-r-normal--10-100-75-75-c-80-iso10646-1",
+  "-lucy-tewi-medium-r-normal--11-90-75-75-p-58-iso10646-1"
+};
 
 ci bar_font_fallback_width = 6; /* Some fonts don't set the right width for some chars, pheex it */
 
@@ -42,19 +43,20 @@ ci bar_font_fallback_width = 6; /* Some fonts don't set the right width for some
 cf bar_opacity = 0.95; /* 0 is invisible, 1 is opaque */
 
 /* Color palette */
-cu palette[] = {
-	0x2D3C46, /* color0 */
-	0xAC4142, /* color1 */
-	0x90A959, /* color2 */
-	0xDE935F, /* color3 */
-	0x6A9FB5, /* color4 */
-	0xAA759F, /* color5 */
-	0x75B5AA, /* color6 */
-	0x6C7A80, /* color7 */
-	0x425059, /* color8 */
-	0xCC6666, /* color9 */
-	0x232C31, /* background */
-	0xC5C8C6 /* foreground */
+cu palette[] =
+{
+  0x2D3C46, /* color0 */
+  0xAC4142, /* color1 */
+  0x90A959, /* color2 */
+  0xDE935F, /* color3 */
+  0x6A9FB5, /* color4 */
+  0xAA759F, /* color5 */
+  0x75B5AA, /* color6 */
+  0x6C7A80, /* color7 */
+  0x425059, /* color8 */
+  0xCC6666, /* color9 */
+  0x232C31, /* background */
+  0xC5C8C6 /* foreground */
 };
 
 ci mouse_button = LEFT; /* Mouse button to react to LEFT, SCROLL or RIGHT */
