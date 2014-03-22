@@ -21,9 +21,11 @@ DESTDIR = /
 endif
 
 install: all check_destdir
-  install -s bin/wildbar "$(DESTDIR)/usr/bin/wildbar"; \
-  install wildbar.conf "$(DESTDIR)/etc/wildbar.conf"; \
+	strip bin/wildbar
+	cp bin/wildbar "$(DESTDIR)"/usr/bin/wildbar
+	mkdir -p "$(DESTDIR)"/etc/wildbar
+	cp wildbar.conf "$(DESTDIR)"/etc/wildbar/wildbar.conf
 
 uninstall: check_destdir
-  rm "$(DESTDIR)/bin/wildbar"; \
-  rm "$(DESTDIR)/etc/wildbar.conf"
+	rm -f "$(DESTDIR)"/bin/wildbar
+	rm -f "$(DESTDIR)"/etc/wildbar/wildbar.conf
