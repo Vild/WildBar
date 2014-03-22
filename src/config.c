@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <assert.h>
+#include <errno.h>
 
 #include "config.h"
 #include "memory.h"
@@ -13,6 +14,10 @@ static void json_print(json_t * json);
 
 struct config * config_new(const char * file)
 {
+  struct stat s;
+  if (file[0] != '\0' && stat(file, &s) == -1 && errno == ENOENT)
+    return NULL;
+
   struct config * config = mem_salloc(struct config);
   config->file = mem_strdup(file);
   config->json = NULL;
@@ -56,6 +61,7 @@ json_t * config_getStructure(struct config * config)
 static void config_load(struct config * config)
 {
   json_t * tmp, * tmp2, * tmp3;
+  char buf[128] = "";
 
   if (config->json != NULL)
   {
@@ -95,7 +101,8 @@ static void config_load(struct config * config)
   if (json_object_get(tmp2, "left") == NULL && json_object_get(tmp2, "center") == NULL && json_object_get(tmp2, "right") == NULL)
   {
     tmp3 = json_object();
-    json_object_set_new(tmp3, "text", json_string("Please update your config!"));
+    snprintf(buf, sizeof(buf), "Please add a config to './wildbar.conf' or '/etc/wildbar.conf'!");
+    json_object_set_new(tmp3, "text", json_string(buf));
     json_object_set_new(tmp2, "center", tmp3);
   }
 

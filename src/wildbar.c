@@ -18,10 +18,6 @@
 #include "process.h"
 #include "config.h"
 
-#ifndef DEFAULT_CONFIG_FILE
-#define DEFAULT_CONFIG_FILE "wildbar.conf"
-#endif
-
 #include "status/bspwm.h"
 #include "status/date.h"
 #include "status/hostname.h"
@@ -32,7 +28,7 @@
 static char * buf;
 static char * tmpbuf;
 
-char * configFile = DEFAULT_CONFIG_FILE;
+char * configFile = NULL;
 static struct config * config;
 
 /*static struct process * cpu_pro;*/
@@ -245,7 +241,24 @@ void wildbar_init()
 {
   buf = mem_alloc(BUF_SIZE);
   tmpbuf = mem_alloc(TMPBUF_SIZE);
-  config = config_new(configFile);
+
+  if (configFile)
+  {
+    config = config_new(configFile);
+
+    if (!config)
+      config = config_new("");
+  }
+  else
+  {
+    config = config_new("wildbar.conf");
+
+    if (!config)
+      config = config_new("/etc/wildbar.conf");
+
+    if (!config)
+      config = config_new("");
+  }
 
   gettimeofday(&last, 0);
 }

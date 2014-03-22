@@ -296,6 +296,19 @@ area_end (screen_t * screen, int x, int align)
   }
 }
 
+static void
+clear_area_list (void)
+{
+  while (area_list_head)
+  {
+    area_t * a = area_list_head;
+    area_list_head = area_list_head->next;
+    free(a->cmd);
+    free(a);
+  }
+  area_list_head = NULL;
+}
+
 void
 parse (char * text)
 {
@@ -305,6 +318,8 @@ parse (char * text)
   int align = 0;
   char * cmd_start = 0;
   screen_t * screen = &screens[0];
+
+  clear_area_list();
 
   xcb_fill_rect (clear_gc, 0, 0, bar_width, bar_height);
 
@@ -730,18 +745,6 @@ init (void)
   }
 
   xcb_flush (c);
-}
-
-static void
-clear_area_list (void)
-{
-  while (area_list_head)
-  {
-    area_t * a = area_list_head;
-    area_list_head = area_list_head->next;
-    free(a->cmd);
-    free(a);
-  }
 }
 
 void

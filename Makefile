@@ -1,26 +1,24 @@
-.PHONY: Ninja cleanNinja all clean check_target files run run-n
-
-DefaultTarget = WildBar
+.PHONY: Ninja cleanNinja all clean files run install uninstall
 
 Ninja: all
 cleanNinja: clean
 
-all: check_target files
+all: files
 	ninja
 
 clean:
 	ninja -t clean -g
 
 run: all
-	bin/${TARGET}
-
-run-n: all
-	bin/${TARGET} -n
-
-check_target:
-ifndef TARGET
-TARGET = ${DefaultTarget}
-endif
+	bin/wildbar
 
 files:
-	chmod +x files.sh ; TARGET=${TARGET} ./files.sh > files.ninja
+	chmod +x files.sh ; TARGET=wildbar ./files.sh > files.ninja
+
+install: all
+	install -s bin/wildbar /bin/wildbar; \
+  install wildbar.conf /etc/wildbar.conf; \
+
+uninstall:
+	rm /bin/wildbar; \
+	rm /etc/wildbar.conf; \

@@ -11,7 +11,7 @@ char * getMusic(char * buf, const char * music_play, const char * music_stop)
 {
   int tonewline = 0;
   const char * pos;
-  char song[100];
+  char song[100] = "";
   int i;
 #define SKIP(str) if (strncmp(pos, str, strlen(str)) == 0) pos += strlen(str)
 #define SKIPEND(str) if (strncmp(pos+tonewline-strlen(str), (str), strlen(str)) == 0) tonewline -= strlen(str);
@@ -83,7 +83,7 @@ char * getVolume(char * buf)
     pos++;
   }
 
-  pos += strlen("volume: ");
+  pos += strlen("volume:");
   vol = atoi(pos);
 
   if (vol == 0)
