@@ -29,7 +29,7 @@ ci bar_offset = 0; /* Offset from the left. Set to 0 to have no effect */
 
 ci bar_underline = UNDERLINE; /* Choose between an UNDERLINE or an OVERLINE */
 ci bar_underline_height = 2; /* The thickness of the underline (in pixels). Set to 0 to disable. */
-ci bar_bottom = TOP; /* Bar position TOP or BOTTOM */
+i bar_bottom = TOP; /* Bar position TOP or BOTTOM */
 
 cs bar_font[2] =   /* The fonts used for the bar, comma separated. Only the first 2 will be used. */
 {
