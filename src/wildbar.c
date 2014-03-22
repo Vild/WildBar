@@ -254,6 +254,9 @@ void wildbar_init()
     config = config_new("wildbar.conf");
 
     if (!config)
+      config = config_new("/etc/wildbar/wildbar.conf");
+
+    if (!config)
       config = config_new("/etc/wildbar.conf");
 
     if (!config)

@@ -7,6 +7,7 @@
 /* Bar */
 int bar_main();
 extern int force_docking;
+extern int bar_bottom;
 
 /* WildBar */
 void wildbar_init();

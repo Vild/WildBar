@@ -13,16 +13,17 @@ int main(int argc, char ** argv)
   char ch;
   int nobar = 0;
 
-  while((ch = getopt(argc, argv, "hnfc:")) != -1)
+  while((ch = getopt(argc, argv, "hnbfc:")) != -1)
   {
     switch(ch)
     {
     case 'h':
       printf("usage: %s [-h] [-n] [-f] [-c CONFIG]\n"
-             "\t-h Show this help\n"
-             "\t-n Prints out the data to the console instead of starting bar\n"
-             "\t-f Force docking(use this if your WM isn't EWMH compliant)\n"
-             "\t-c Loaded the config CONFIG instead of the default ", argv[0]);
+             "\t-h Show this help.\n"
+             "\t-n Prints out the data to the console instead of starting bar.\n"
+             "\t-b Show the bar at the bottom of the screen.\n"
+             "\t-f Force docking(use this if your WM isn't EWMH compliant).\n"
+             "\t-c Loaded the config CONFIG instead of the default.", argv[0]);
       exit(0);
 
     case 'n':
@@ -31,6 +32,10 @@ int main(int argc, char ** argv)
 
     case 'f':
       force_docking = 1;
+      break;
+
+    case 'b':
+      bar_bottom = 1;
       break;
 
     case 'c':

@@ -15,10 +15,15 @@ run: all
 files:
 	chmod +x files.sh ; TARGET=wildbar ./files.sh > files.ninja
 
-install: all
-	install -s bin/wildbar /bin/wildbar; \
-  install wildbar.conf /etc/wildbar.conf; \
+check_destdir:
+ifndef DESTDIR
+TARGET = /
+endif
 
-uninstall:
-	rm /bin/wildbar; \
-	rm /etc/wildbar.conf; \
+install: all check_destdir
+	install -s bin/wildbar ${DESTDIR}/usr/bin/wildbar; \
+  install wildbar.conf ${DESTDIR}/etc/wildbar.conf; \
+
+uninstall: check_destdir
+	rm ${DESTDIR}/bin/wildbar; \
+	rm ${DESTDIR}/etc/wildbar.conf
