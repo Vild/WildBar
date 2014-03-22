@@ -22,6 +22,7 @@ endif
 
 install: all check_destdir
 	strip bin/wildbar
+	mkdir -p "$(DESTDIR)"/usr/bin
 	cp bin/wildbar "$(DESTDIR)"/usr/bin/wildbar
 	mkdir -p "$(DESTDIR)"/etc/wildbar
 	cp wildbar.conf "$(DESTDIR)"/etc/wildbar/wildbar.conf
