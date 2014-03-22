@@ -17,13 +17,13 @@ files:
 
 check_destdir:
 ifndef DESTDIR
-TARGET = /
+DESTDIR = /
 endif
 
 install: all check_destdir
-	install -s bin/wildbar $(DESTDIR)/usr/bin/wildbar; \
-  install wildbar.conf $(DESTDIR)/etc/wildbar.conf; \
+  install -s bin/wildbar "$(DESTDIR)/usr/bin/wildbar"; \
+  install wildbar.conf "$(DESTDIR)/etc/wildbar.conf"; \
 
 uninstall: check_destdir
-	rm $(DESTDIR)/bin/wildbar; \
-	rm $(DESTDIR)/etc/wildbar.conf
+  rm "$(DESTDIR)/bin/wildbar"; \
+  rm "$(DESTDIR)/etc/wildbar.conf"
