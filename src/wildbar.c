@@ -1,5 +1,5 @@
 #define __USE_XOPEN_EXTENDED
-#define _BSD_SOURCE
+#define _DEFAULT_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
