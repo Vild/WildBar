@@ -96,8 +96,9 @@ char * wildbar_getLine()
   struct timeval now;
   gettimeofday(&now, 0);
 
-  if (diff_ms(now, last) < 50)
-    return NULL;
+  int diff = diff_ms(now, last);
+  if (diff < 50)
+    usleep(diff * 1000);
 
   gettimeofday(&last, 0);
 

@@ -13,8 +13,8 @@ struct allocation
   struct allocation * next;
 };
 
-#define mem_alloc(s) mem_alloc_((s), __FILE__, __FUNCTION__, __LINE__)
-#define mem_free(p) mem_free_((void *)(p), __FILE__, __FUNCTION__, __LINE__)
+#define mem_alloc(s) mem_alloc_((s), __FILE__, __func__, __LINE__)
+#define mem_free(p) mem_free_((void *)(p), __FILE__, __func__, __LINE__)
 
 /* s as in struct */
 #define mem_salloc(struct) (struct *)mem_alloc(sizeof(struct))

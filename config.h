@@ -34,7 +34,7 @@ i bar_bottom = TOP; /* Bar position TOP or BOTTOM */
 cs bar_font[2] =   /* The fonts used for the bar, comma separated. Only the first 2 will be used. */
 {
   "-misc-stlarch-medium-r-normal--10-100-75-75-c-80-iso10646-1",
-  "-lucy-tewi-medium-r-normal--11-90-75-75-p-58-iso10646-1"
+  "-lucy-tewi-medium-r-normal--11-90-*-*-*-*-iso10646-1"
 };
 
 ci bar_font_fallback_width = 6; /* Some fonts don't set the right width for some chars, pheex it */
